@@ -1,0 +1,12 @@
+{
+  "name": "SP2K - Proses Antrean Harga",
+  "nodes": [
+    {"parameters":{"rule":{"interval":[{"field":"minutes","minutesInterval":15}]}},"id":"schedule","name":"Setiap 15 Menit","type":"n8n-nodes-base.scheduleTrigger","typeVersion":1.2,"position":[280,300]},
+    {"parameters":{"method":"POST","url":"={{ $env.SP2K_URL + '/api/crawls/next' }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"=Bearer {{ $env.SP2K_SYNC_TOKEN }}"}]}},"id":"next","name":"Ambil Antrean","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[500,300]},
+    {"parameters":{"conditions":{"options":{"caseSensitive":true},"conditions":[{"leftValue":"={{ $json.job }}","operator":{"type":"object","operation":"exists","singleValue":true}}]}},"id":"has-job","name":"Ada Antrean?","type":"n8n-nodes-base.if","typeVersion":2.2,"position":[720,300]},
+    {"parameters":{"jsCode":"// API sekarang menyertakan $json.price_sources dengan urutan: lokal, provinsi, nasional.\n// Pilih adapter berdasarkan source.document_type (xlsx/csv/pdf/html), lalu kirim\n// kandidat tervalidasi ke /api/price-candidates dengan source_id = source.id.\n// Jangan tandai crawl selesai bila tidak ada sumber atau ekstraksi gagal.\nreturn $input.all();"},"id":"crawl","name":"Crawler per Sumber","type":"n8n-nodes-base.code","typeVersion":2,"position":[940,220]},
+    {"parameters":{"method":"POST","url":"={{ $env.SP2K_URL + '/api/crawls/' + $('Ambil Antrean').item.json.job.id + '/complete' }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"=Bearer {{ $env.SP2K_SYNC_TOKEN }}"}]},"sendBody":true,"specifyBody":"json","jsonBody":"{\"status\":\"completed\"}"},"id":"complete","name":"Tandai Selesai","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1160,220]}
+  ],
+  "connections":{"Setiap 15 Menit":{"main":[[{"node":"Ambil Antrean","type":"main","index":0}]]},"Ambil Antrean":{"main":[[{"node":"Ada Antrean?","type":"main","index":0}]]},"Ada Antrean?":{"main":[[{"node":"Crawler per Sumber","type":"main","index":0}],[]]},"Crawler per Sumber":{"main":[[{"node":"Tandai Selesai","type":"main","index":0}]]}},
+  "active":false
+}

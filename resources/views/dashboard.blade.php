@@ -1,0 +1,7 @@
+@extends('layouts.app')
+@section('title','Ringkasan')
+@section('content')
+<section class="hero"><div><p class="eyebrow">Tahap perencanaan awal</p><h2>Bangun estimasi yang<br>punya dasar.</h2><p>Mulai dari BoQ, pilih wilayah dan sumber, lalu review kandidat sebelum harga dipakai dalam estimasi.</p><a href="{{ route('boq-imports.create') }}" class="button">Upload BoQ</a></div><div class="workflow"><b>Alur SP2K</b><ol><li>Upload BoQ</li><li>Pilih wilayah & sumber</li><li>Cari harga</li><li>Review kandidat</li><li>Estimasi</li></ol></div></section>
+<section class="stats"><article><span>Proyek aktif</span><strong>{{ $projectCount }}</strong><small>Siap dihitung</small></article><article><span>Harga acuan</span><strong>{{ $priceCount }}</strong><small>Material, upah & alat</small></article><article><span>Status data</span><strong>Awal</strong><small>Tunggu sampel BoQ</small></article></section>
+<section class="panel"><div class="section-head"><div><p class="eyebrow">Aktivitas</p><h2>Proyek terbaru</h2></div><a href="#" class="button">Tambah proyek</a></div><table><thead><tr><th>Kode</th><th>Proyek</th><th>Lokasi</th><th>Status</th></tr></thead><tbody>@forelse($recentProjects as $project)<tr><td>{{ $project->code }}</td><td>{{ $project->name }}</td><td>{{ $project->location ?: '—' }}</td><td><span class="pill">{{ $project->status }}</span></td></tr>@empty<tr><td colspan="4">Belum ada proyek.</td></tr>@endforelse</tbody></table></section>
+@endsection
