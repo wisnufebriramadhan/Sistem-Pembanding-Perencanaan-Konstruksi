@@ -1,0 +1,41 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\BoqImport;
+use App\Models\CrawlRequest;
+use App\Models\Region;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class CrawlRequestFlowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_estimator_can_queue_an_automatic_price_search_without_selecting_sources(): void
+    {
+        $estimator = User::factory()->create(['role' => 'estimator']);
+        $region = Region::create(['name' => 'Kota Yogyakarta', 'type' => 'city', 'code' => '3471']);
+        $boq = BoqImport::create([
+            'region_id' => $region->id,
+            'original_filename' => 'uji.xlsx',
+            'stored_path' => 'boq-imports/uji.xlsx',
+            'status' => 'preview',
+            'items' => [['description' => 'Pipa PVC', 'unit' => 'm', 'quantity' => 10]],
+            'item_count' => 1,
+            'matched_count' => 0,
+            'created_by' => $estimator->id,
+        ]);
+
+        $this->actingAs($estimator)
+            ->post(route('crawls.store', $boq))
+            ->assertRedirect();
+
+        $crawl = CrawlRequest::sole();
+
+        $this->assertSame(['government', 'marketplace'], $crawl->sources);
+        $this->assertSame($region->id, $crawl->region_id);
+        $this->assertSame(1, $crawl->queued_item_count);
+    }
+}

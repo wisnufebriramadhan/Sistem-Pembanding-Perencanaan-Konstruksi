@@ -12,7 +12,7 @@ class CrawlRequestController extends Controller
 {
     public function store(Request $request, BoqImport $boqImport)
     {
-        $data = $request->validate(['sources' => ['required', 'array', 'min:1'], 'sources.*' => ['in:government,marketplace'], 'region_id' => ['nullable', 'integer', 'exists:regions,id']]);
+        $data = $request->validate(['region_id' => ['nullable', 'integer', 'exists:regions,id']]);
         $prices = ReferencePrice::where('is_active', true)->get();
         $hits = 0;
         $items = collect($boqImport->items)->map(function ($item) use ($prices, &$hits) {
@@ -24,10 +24,10 @@ class CrawlRequestController extends Controller
                 $item['bank_price_id'] = $price->id;
             }
 
-return $item;
+            return $item;
         })->all();
         $boqImport->update(['items' => $items, 'matched_count' => $hits]);
-        $crawl = CrawlRequest::create(['boq_import_id' => $boqImport->id, 'region_id' => $data['region_id'] ?? $boqImport->region_id, 'sources' => $data['sources'], 'items' => array_values(array_filter($items, fn ($item) => $item['bank_status'] === 'crawl_needed')), 'bank_hit_count' => $hits, 'queued_item_count' => count($items) - $hits, 'created_by' => $request->user()->id]);
+        $crawl = CrawlRequest::create(['boq_import_id' => $boqImport->id, 'region_id' => $data['region_id'] ?? $boqImport->region_id, 'sources' => ['government', 'marketplace'], 'items' => array_values(array_filter($items, fn ($item) => $item['bank_status'] === 'crawl_needed')), 'bank_hit_count' => $hits, 'queued_item_count' => count($items) - $hits, 'created_by' => $request->user()->id]);
 
         return redirect()->route('crawls.show', $crawl);
     }
