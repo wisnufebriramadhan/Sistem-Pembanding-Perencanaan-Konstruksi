@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CrawlRequest;
 use App\Models\PriceSource;
+use App\Services\PriceSources\JdihnSourceDiscovery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CrawlQueueController extends Controller
 {
-    public function next(Request $request)
+    public function next(Request $request, JdihnSourceDiscovery $sourceDiscovery)
     {
         $this->authorizeWorker($request);
         $crawl = DB::transaction(function () {
@@ -28,9 +29,16 @@ class CrawlQueueController extends Controller
 
         $crawl->load('region.parent');
 
+        $priceSources = $this->priceSourcesFor($crawl);
+
+        if (in_array('government', $crawl->sources, true) && collect($priceSources)->where('type', 'government')->isEmpty()) {
+            $sourceDiscovery->discover($crawl);
+            $priceSources = $this->priceSourcesFor($crawl);
+        }
+
         return response()->json([
             'job' => $crawl,
-            'price_sources' => $this->priceSourcesFor($crawl),
+            'price_sources' => $priceSources,
         ]);
     }
 
