@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CrawlRequest;
+use App\Models\PriceCandidate;
 use App\Models\PriceSource;
+use App\Services\PriceSources\GovernmentPdfPriceExtractor;
 use App\Services\PriceSources\JdihnSourceDiscovery;
+use App\Services\PriceSources\NationalSbmSourceDiscovery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CrawlQueueController extends Controller
 {
-    public function next(Request $request, JdihnSourceDiscovery $sourceDiscovery)
+    public function next(Request $request, JdihnSourceDiscovery $sourceDiscovery, NationalSbmSourceDiscovery $nationalSourceDiscovery)
     {
         $this->authorizeWorker($request);
         $crawl = DB::transaction(function () {
@@ -34,6 +37,11 @@ class CrawlQueueController extends Controller
         if (in_array('government', $crawl->sources, true) && collect($priceSources)->where('type', 'government')->isEmpty()) {
             $sourceDiscovery->discover($crawl);
             $priceSources = $this->priceSourcesFor($crawl);
+
+            if (collect($priceSources)->where('type', 'government')->isEmpty()) {
+                $nationalSourceDiscovery->discover($crawl);
+                $priceSources = $this->priceSourcesFor($crawl);
+            }
         }
 
         return response()->json([
@@ -51,6 +59,27 @@ class CrawlQueueController extends Controller
         $crawl->update(['status' => $data['status'], 'completed_at' => now()]);
 
         return response()->json(['ok' => true]);
+    }
+
+    public function extractGovernmentPdf(Request $request, CrawlRequest $crawl, GovernmentPdfPriceExtractor $extractor)
+    {
+        $this->authorizeWorker($request);
+        abort_unless($crawl->status === 'processing', 409, 'Antrean tidak sedang diproses.');
+        $data = $request->validate(['source_id' => ['required', 'exists:price_sources,id']]);
+        $source = PriceSource::findOrFail($data['source_id']);
+
+        abort_unless($source->type === 'government' && $source->document_type === 'pdf' && $this->sourceMatchesCrawl($source, $crawl), 422, 'Sumber PDF tidak sesuai dengan antrean.');
+
+        $items = $extractor->extract($crawl, $source);
+        foreach ($items as $item) {
+            PriceCandidate::updateOrCreate(
+                ['crawl_request_id' => $crawl->id, 'price_source_id' => $source->id, 'external_key' => $item['external_key']],
+                ['name' => $item['name'], 'unit' => $item['unit'], 'unit_price' => $item['unit_price'], 'status' => 'pending', 'received_at' => now(), 'raw_payload' => $item]
+            );
+        }
+        $source->update(['last_checked_at' => now()]);
+
+        return response()->json(['accepted' => count($items), 'source_id' => $source->id, 'crawl_id' => $crawl->id]);
     }
 
     private function authorizeWorker(Request $request): void
@@ -107,5 +136,12 @@ class CrawlQueueController extends Controller
                 ];
             })
             ->all();
+    }
+
+    private function sourceMatchesCrawl(PriceSource $source, CrawlRequest $crawl): bool
+    {
+        $regionIds = collect([$crawl->region_id, $crawl->region?->parent_id])->filter();
+
+        return $source->region_id === null || $regionIds->contains($source->region_id);
     }
 }
