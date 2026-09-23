@@ -19,7 +19,7 @@ class CrawlRequestFlowTest extends TestCase
     {
         Http::fake([
             'https://jdihn.go.id/search*' => Http::response(
-                '<script>{"id":42,"title":"Standar Harga Satuan Kota Yogyakarta","instansi":"JDIH Pemerintah Kota Yogyakarta","status":"Berlaku","tahunTerbit":2026}</script>'
+                '<script>{"id":42,"title":"Standar Harga Satuan Kota Yogyakarta","instansi":"JDIH Pemerintah Kota Yogyakarta","status":"Tidak Berlaku","tahunTerbit":2009}{"id":43,"title":"Standar Harga Satuan Kota Yogyakarta Tahun 2027","instansi":"JDIH Pemerintah Kota Yogyakarta","status":"Berlaku","tahunTerbit":2026}</script>'
             ),
         ]);
 
@@ -45,7 +45,7 @@ class CrawlRequestFlowTest extends TestCase
         $this->assertSame(['government', 'marketplace'], $crawl->sources);
         $this->assertSame($region->id, $crawl->region_id);
         $this->assertSame(1, $crawl->queued_item_count);
-        $this->assertSame('Standar Harga Satuan Kota Yogyakarta', PriceSource::sole()->name);
-        $this->assertSame('https://jdihn.go.id/api/doc/42/file?action=download', PriceSource::sole()->url);
+        $this->assertSame('Standar Harga Satuan Kota Yogyakarta Tahun 2027', PriceSource::sole()->name);
+        $this->assertSame('https://jdihn.go.id/api/doc/43/file?action=download', PriceSource::sole()->url);
     }
 }

@@ -66,6 +66,11 @@ class CrawlQueueController extends Controller
 
         return PriceSource::query()
             ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('notes')
+                    ->orWhere('notes', '!=', 'Ditemukan otomatis melalui JDIHN.')
+                    ->orWhere('reference_year', '>=', now()->subYears(2)->year);
+            })
             ->whereIn('type', $crawl->sources)
             ->where(function ($query) use ($regionId, $provinceId) {
                 $query->whereNull('region_id');

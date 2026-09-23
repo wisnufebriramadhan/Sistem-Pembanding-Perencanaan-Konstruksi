@@ -111,6 +111,8 @@ class JdihnSourceDiscovery
             ->all();
 
         return collect($documents)
+            ->filter(fn (array $document) => Str::lower($document['status']) === 'berlaku')
+            ->filter(fn (array $document) => $document['year'] >= now()->subYears(2)->year)
             ->map(function (array $document) use ($terms): array {
                 $haystack = Str::lower("{$document['title']} {$document['instansi']}");
                 $score = collect($terms)->sum(fn (string $term) => Str::contains($haystack, $term) ? 100 : 0);
