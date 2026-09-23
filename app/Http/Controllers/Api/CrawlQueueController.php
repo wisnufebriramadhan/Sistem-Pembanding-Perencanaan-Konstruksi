@@ -11,6 +11,7 @@ use App\Services\PriceSources\JdihnSourceDiscovery;
 use App\Services\PriceSources\NationalSbmSourceDiscovery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class CrawlQueueController extends Controller
 {
@@ -70,7 +71,17 @@ class CrawlQueueController extends Controller
 
         abort_unless($source->type === 'government' && $source->document_type === 'pdf' && $this->sourceMatchesCrawl($source, $crawl), 422, 'Sumber PDF tidak sesuai dengan antrean.');
 
-        $items = $extractor->extract($crawl, $source);
+        try {
+            $items = $extractor->extract($crawl, $source);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Dokumen sumber belum dapat diunduh. Silakan coba ulang nanti.',
+                'source_id' => $source->id,
+                'crawl_id' => $crawl->id,
+            ], 502);
+        }
         foreach ($items as $item) {
             PriceCandidate::updateOrCreate(
                 ['crawl_request_id' => $crawl->id, 'price_source_id' => $source->id, 'external_key' => $item['external_key']],

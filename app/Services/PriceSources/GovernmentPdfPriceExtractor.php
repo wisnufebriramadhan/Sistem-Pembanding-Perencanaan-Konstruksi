@@ -16,7 +16,11 @@ class GovernmentPdfPriceExtractor
      */
     public function extract(CrawlRequest $crawl, PriceSource $source): array
     {
-        $response = Http::timeout(60)->accept('application/pdf')->get($source->url);
+        $response = Http::connectTimeout(60)
+            ->timeout(120)
+            ->retry(3, 1000)
+            ->accept('application/pdf')
+            ->get($source->url);
         $response->throw();
 
         $document = $response->body();
