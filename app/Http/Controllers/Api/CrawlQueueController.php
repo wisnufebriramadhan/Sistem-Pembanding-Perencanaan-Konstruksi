@@ -47,6 +47,7 @@ class CrawlQueueController extends Controller
         $this->authorizeWorker($request);
         abort_unless($crawl->status === 'processing', 409);
         $data = $request->validate(['status' => ['required', 'in:completed,failed']]);
+        abort_if($data['status'] === 'completed' && ! $crawl->candidates()->exists(), 422, 'Tidak dapat menyelesaikan antrean tanpa kandidat harga.');
         $crawl->update(['status' => $data['status'], 'completed_at' => now()]);
 
         return response()->json(['ok' => true]);

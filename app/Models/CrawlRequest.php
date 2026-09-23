@@ -17,4 +17,9 @@ class CrawlRequest extends Model
     {
         return $this->belongsTo(Region::class);
     }
+
+    public function candidates()
+    {
+        return $this->hasMany(PriceCandidate::class);
+    }
 }

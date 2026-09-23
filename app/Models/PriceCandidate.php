@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PriceCandidate extends Model
 {
     protected $fillable = [
-        'price_source_id', 'external_key', 'name', 'unit', 'unit_price', 'raw_payload', 'status', 'received_at',
+        'crawl_request_id', 'price_source_id', 'external_key', 'name', 'unit', 'unit_price', 'raw_payload', 'status', 'received_at',
         'reviewed_by', 'reviewed_at', 'rejection_reason',
     ];
 
@@ -19,6 +19,11 @@ class PriceCandidate extends Model
     public function source()
     {
         return $this->belongsTo(PriceSource::class, 'price_source_id');
+    }
+
+    public function crawlRequest()
+    {
+        return $this->belongsTo(CrawlRequest::class);
     }
 
     public function reviewer()
